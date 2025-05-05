@@ -7,10 +7,11 @@
         xmlns:models="clr-namespace:ContextCreator.Models"
         xmlns:converters="clr-namespace:ContextCreator.Converters"
         mc:Ignorable="d"
-        Title="Filter Files" Height="300" Width="400" WindowStartupLocation="CenterOwner">
+        Title="Filter Files" Height="350" Width="400" WindowStartupLocation="CenterOwner">
     <Window.Resources>
         <converters:EnumToBoolConverter x:Key="EnumToBoolConverter"/>
         <converters:StringToBoolConverter x:Key="StringToBoolConverter"/>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </Window.Resources>
     
     <Grid Margin="10">
@@ -50,6 +51,12 @@
                 <CheckBox Content="Case sensitive" IsChecked="{Binding IsCaseSensitive}" Margin="5"/>
                 <CheckBox Content="Regular expression" IsChecked="{Binding IsRegex}" Margin="5"/>
                 <CheckBox Content="Apply to selected folders only" IsChecked="{Binding ApplyToSelectedFoldersOnly}" Margin="5"/>
+                
+                <!-- Exact Match Option (only visible for Filename Filter) -->
+                <CheckBox Content="Exact filename match (instead of contains)" 
+                          IsChecked="{Binding IsExactMatch}" 
+                          Margin="5"
+                          Visibility="{Binding FilterType, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:FilterType.FileName}, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             </StackPanel>
         </GroupBox>
 
