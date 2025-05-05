@@ -12,7 +12,7 @@
         <converters:EnumToBoolConverter x:Key="EnumToBoolConverter"/>
         <converters:StringToBoolConverter x:Key="StringToBoolConverter"/>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-        <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter"/>
+        <converters:FilterTypeToVisibilityConverter x:Key="FilterTypeToVisibilityConverter"/>
     </Window.Resources>
     
     <Grid Margin="10">
@@ -57,7 +57,7 @@
                 <CheckBox Content="Exact filename match (instead of contains)" 
                           IsChecked="{Binding IsExactMatch}" 
                           Margin="5"
-                          Visibility="{Binding FilterType, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter={x:Static models:FilterType.FileName}}"/>
+                          Visibility="{Binding FilterType, Converter={StaticResource FilterTypeToVisibilityConverter}, ConverterParameter={x:Static models:FilterType.FileName}}"/>
             </StackPanel>
         </GroupBox>
 
