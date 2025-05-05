@@ -32,14 +32,12 @@ namespace ContextCreator.Models
         {
             get
             {
+                // Ensure content is loaded
+                EnsureContentLoaded();
+                
                 if (_items == null)
                 {
                     _items = new ObservableCollection<object>();
-                    // When Items is accessed and the folder is expanded, ensure content is loaded
-                    if (_isExpanded && !_isLoaded)
-                    {
-                        LoadContent();
-                    }
                     
                     // Add folders first, then files
                     foreach (var folder in Folders)
@@ -63,9 +61,9 @@ namespace ContextCreator.Models
                 if (_isExpanded != value)
                 {
                     _isExpanded = value;
-                    if (_isExpanded && !_isLoaded)
+                    if (_isExpanded)
                     {
-                        LoadContent();
+                        EnsureContentLoaded();
                     }
                     OnPropertyChanged();
                     // When expansion changes, refresh the items collection
@@ -83,6 +81,12 @@ namespace ContextCreator.Models
                 {
                     _isSelected = value;
                     OnPropertyChanged();
+                    
+                    // Load content when folder is selected
+                    if (_isSelected)
+                    {
+                        EnsureContentLoaded();
+                    }
                     
                     // Update selection status for all children
                     foreach (var folder in Folders)
@@ -124,6 +128,17 @@ namespace ContextCreator.Models
                 Name = fullPath;
             }
             Parent = parent;
+        }
+
+        /// <summary>
+        /// Ensures that folder content is loaded
+        /// </summary>
+        public void EnsureContentLoaded()
+        {
+            if (!_isLoaded)
+            {
+                LoadContent();
+            }
         }
 
         /// <summary>

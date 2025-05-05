@@ -240,7 +240,41 @@ namespace ContextCreator.ViewModels
             }
             else if (item is FolderItem folderItem)
             {
-                PreviewContent = $"Folder: {folderItem.FullPath}\r\n\r\nFiles: {folderItem.Files.Count}\r\nSubfolders: {folderItem.Folders.Count}";
+                // Ensure content is loaded when a folder is selected for preview
+                folderItem.EnsureContentLoaded();
+                
+                // Build folder info - include more detailed information
+                var folderInfo = new System.Text.StringBuilder();
+                folderInfo.AppendLine($"Folder: {folderItem.FullPath}");
+                folderInfo.AppendLine();
+                folderInfo.AppendLine($"Subfolders: {folderItem.Folders.Count}");
+                
+                // List the subfolder names
+                if (folderItem.Folders.Count > 0)
+                {
+                    folderInfo.AppendLine();
+                    folderInfo.AppendLine("Subfolder List:");
+                    foreach (var subfolder in folderItem.Folders)
+                    {
+                        folderInfo.AppendLine($"- {subfolder.Name}");
+                    }
+                }
+                
+                folderInfo.AppendLine();
+                folderInfo.AppendLine($"Files: {folderItem.Files.Count}");
+                
+                // List the file names
+                if (folderItem.Files.Count > 0)
+                {
+                    folderInfo.AppendLine();
+                    folderInfo.AppendLine("File List:");
+                    foreach (var file in folderItem.Files)
+                    {
+                        folderInfo.AppendLine($"- {file.Name} ({FormatFileSize(file.Size)})");
+                    }
+                }
+                
+                PreviewContent = folderInfo.ToString();
             }
             else
             {
