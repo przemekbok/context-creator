@@ -34,6 +34,12 @@ namespace ContextCreator.Models
         /// Gets or sets whether the filter applies only to selected folders
         /// </summary>
         public bool ApplyToSelectedFoldersOnly { get; set; } = false;
+        
+        /// <summary>
+        /// Gets or sets whether the filename filter should match the exact filename
+        /// rather than just containing the expression
+        /// </summary>
+        public bool IsExactMatch { get; set; } = false;
     }
 
     /// <summary>
