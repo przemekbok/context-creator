@@ -16,6 +16,7 @@ namespace ContextCreator.ViewModels
         private bool _isRegex;
         private FilterAction _filterAction = FilterAction.Include;
         private bool _applyToSelectedFoldersOnly;
+        private bool _isExactMatch;
 
         /// <summary>
         /// Gets or sets the filter type
@@ -70,6 +71,15 @@ namespace ContextCreator.ViewModels
             get => _applyToSelectedFoldersOnly;
             set => SetProperty(ref _applyToSelectedFoldersOnly, value);
         }
+        
+        /// <summary>
+        /// Gets or sets whether the filename filter should match the exact filename
+        /// </summary>
+        public bool IsExactMatch
+        {
+            get => _isExactMatch;
+            set => SetProperty(ref _isExactMatch, value);
+        }
 
         /// <summary>
         /// Gets the command to apply the filter
@@ -109,7 +119,8 @@ namespace ContextCreator.ViewModels
                 IsCaseSensitive = IsCaseSensitive,
                 IsRegex = IsRegex,
                 Action = FilterAction,
-                ApplyToSelectedFoldersOnly = ApplyToSelectedFoldersOnly
+                ApplyToSelectedFoldersOnly = ApplyToSelectedFoldersOnly,
+                IsExactMatch = IsExactMatch
             };
 
             FilterApplied?.Invoke(this, options);
