@@ -466,19 +466,22 @@ namespace ContextCreator.ViewModels
             }
         }
 
-        private void OpenFolder(string folderPath)
+        private void OpenFolder(string folderPath, bool createNewConfiguration = true)
         {
             try
             {
                 StatusMessage = $"Opening folder: {folderPath}";
                 RootFolder = new FolderItem(folderPath);
                 RootFolder.IsExpanded = true; // Expand root folder by default
-                RootFolder.IsSelected = true; // Select all files by default
                 
-                CurrentConfiguration = new ContextConfiguration
+                if (createNewConfiguration)
                 {
-                    RootFolder = folderPath
-                };
+                    RootFolder.IsSelected = true; // Select all files by default
+                    CurrentConfiguration = new ContextConfiguration
+                    {
+                        RootFolder = folderPath
+                    };
+                }
                 
                 // Add to recent folders
                 if (!RecentFolders.Contains(folderPath))
@@ -491,7 +494,10 @@ namespace ContextCreator.ViewModels
                 }
 
                 // Update file count and token estimation
-                ExecuteEstimateTokenCount();
+                if (createNewConfiguration)
+                {
+                    ExecuteEstimateTokenCount();
+                }
                 
                 StatusMessage = "Ready";
             }
@@ -579,13 +585,16 @@ namespace ContextCreator.ViewModels
                 // Open the root folder
                 if (!string.IsNullOrEmpty(CurrentConfiguration.RootFolder) && Directory.Exists(CurrentConfiguration.RootFolder))
                 {
-                    OpenFolder(CurrentConfiguration.RootFolder);
+                    OpenFolder(CurrentConfiguration.RootFolder, false); // Don't create new configuration
                     
                     // Apply selection
                     if (RootFolder != null && CurrentConfiguration.SelectedPaths.Any())
                     {
                         ApplySelection(RootFolder, CurrentConfiguration.SelectedPaths);
                     }
+                    
+                    // Update token estimation after applying selection
+                    ExecuteEstimateTokenCount();
                 }
                 
                 // Add to recent configurations
