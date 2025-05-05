@@ -29,6 +29,8 @@ namespace ContextCreator.ViewModels
         private string _previewContent = "";
         private FilterOptions? _currentFilterOptions;
         private bool _hasActiveFilter = false;
+        private ObservableCollection<string> _matchingPaths = new ObservableCollection<string>();
+        private int _matchCount = 0;
 
         /// <summary>
         /// Gets the root folder
@@ -110,6 +112,24 @@ namespace ContextCreator.ViewModels
         {
             get => _hasActiveFilter;
             private set => SetProperty(ref _hasActiveFilter, value);
+        }
+
+        /// <summary>
+        /// Gets the collection of matching file and folder paths
+        /// </summary>
+        public ObservableCollection<string> MatchingPaths
+        {
+            get => _matchingPaths;
+            set => SetProperty(ref _matchingPaths, value);
+        }
+
+        /// <summary>
+        /// Gets the count of matching items
+        /// </summary>
+        public int MatchCount
+        {
+            get => _matchCount;
+            set => SetProperty(ref _matchCount, value);
         }
 
         /// <summary>
@@ -226,6 +246,11 @@ namespace ContextCreator.ViewModels
         public ICommand InvertSelectionCommand { get; }
 
         /// <summary>
+        /// Gets the command to show matching paths
+        /// </summary>
+        public ICommand ShowMatchingPathsCommand { get; }
+
+        /// <summary>
         /// Initializes a new instance of the MainViewModel class
         /// </summary>
         public MainViewModel()
@@ -252,6 +277,7 @@ namespace ContextCreator.ViewModels
             SelectAllCommand = new RelayCommand(_ => ExecuteSelectAll());
             DeselectAllCommand = new RelayCommand(_ => ExecuteDeselectAll());
             InvertSelectionCommand = new RelayCommand(_ => ExecuteInvertSelection());
+            ShowMatchingPathsCommand = new RelayCommand(_ => ExecuteShowMatchingPaths(), _ => HasActiveFilter);
 
             // Load recent folders and configurations
             LoadRecentItems();
@@ -328,6 +354,98 @@ namespace ContextCreator.ViewModels
             else
             {
                 PreviewContent = string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Shows a list of all paths that match the current filter
+        /// </summary>
+        private void ExecuteShowMatchingPaths()
+        {
+            if (RootFolder == null || !HasActiveFilter)
+            {
+                return;
+            }
+
+            try
+            {
+                // Clear the previous list
+                MatchingPaths.Clear();
+                MatchCount = 0;
+                
+                // Build a string with all matching paths
+                var matchingPathsList = new List<string>();
+                CollectMatchingPaths(RootFolder, matchingPathsList);
+                
+                // Sort the paths for better readability
+                matchingPathsList.Sort();
+                
+                // Add paths to the observable collection
+                foreach (var path in matchingPathsList)
+                {
+                    MatchingPaths.Add(path);
+                }
+                
+                MatchCount = MatchingPaths.Count;
+                
+                // Build the preview content
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"Filter Results: {MatchCount} matches found");
+                sb.AppendLine();
+                
+                if (_currentFilterOptions != null)
+                {
+                    string filterType = _currentFilterOptions.Type == FilterType.Content ? "Content" : "Filename";
+                    string matchType = _currentFilterOptions.IsExactMatch ? "exact match" : "contains";
+                    string caseSensitive = _currentFilterOptions.IsCaseSensitive ? "case-sensitive" : "case-insensitive";
+                    string action = _currentFilterOptions.Action == FilterAction.Include ? "Include" : "Exclude";
+                    string regex = _currentFilterOptions.IsRegex ? "using regex" : "";
+                    
+                    sb.AppendLine($"Filter: {filterType} filter, {action} items that {matchType} \"{_currentFilterOptions.Expression}\" ({caseSensitive}) {regex}");
+                    sb.AppendLine();
+                }
+                
+                sb.AppendLine("Matching Paths:");
+                sb.AppendLine("---------------");
+                
+                foreach (var path in MatchingPaths)
+                {
+                    sb.AppendLine(path);
+                }
+                
+                PreviewContent = sb.ToString();
+                StatusMessage = $"Found {MatchCount} matching items";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error showing matching paths: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// Collects paths of all items that match the current filter
+        /// </summary>
+        private void CollectMatchingPaths(FolderItem folder, List<string> matchingPaths)
+        {
+            // Add matching files
+            foreach (var file in folder.Files)
+            {
+                if (file.MatchType == MatchType.Direct)
+                {
+                    matchingPaths.Add(file.FullPath);
+                }
+            }
+            
+            // Add the folder if it directly matches
+            if (folder.MatchType == MatchType.Direct)
+            {
+                matchingPaths.Add($"{folder.FullPath}/");
+            }
+            
+            // Recursively process subfolders
+            foreach (var subFolder in folder.Folders)
+            {
+                CollectMatchingPaths(subFolder, matchingPaths);
             }
         }
 
@@ -550,7 +668,9 @@ namespace ContextCreator.ViewModels
                 _currentFilterOptions = options;
                 await _filterService.ApplyFilterAsync(RootFolder, options);
                 HasActiveFilter = true;
-                StatusMessage = "Filter applied. Use 'Tools > Filter Actions' to work with matching items.";
+                
+                // Show the matching paths after applying the filter
+                ExecuteShowMatchingPaths();
             }
             catch (Exception ex)
             {
@@ -571,6 +691,8 @@ namespace ContextCreator.ViewModels
                 ClearFilters(RootFolder);
                 _currentFilterOptions = null;
                 HasActiveFilter = false;
+                MatchingPaths.Clear();
+                MatchCount = 0;
                 StatusMessage = "Filters cleared";
             }
             catch (Exception ex)
