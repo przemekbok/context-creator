@@ -137,8 +137,16 @@ namespace ContextCreator.Services
                         isMatch = false;
                     }
                 }
+                else if (options.IsExactMatch)
+                {
+                    // Exact match comparison
+                    isMatch = options.IsCaseSensitive 
+                        ? file.Name.Equals(options.Expression) 
+                        : file.Name.Equals(options.Expression, StringComparison.OrdinalIgnoreCase);
+                }
                 else
                 {
+                    // Contains match comparison (default behavior)
                     isMatch = options.IsCaseSensitive 
                         ? file.Name.Contains(options.Expression) 
                         : file.Name.Contains(options.Expression, StringComparison.OrdinalIgnoreCase);
@@ -178,8 +186,16 @@ namespace ContextCreator.Services
                     folderNameMatches = false;
                 }
             }
+            else if (options.IsExactMatch)
+            {
+                // Exact match for folder name
+                folderNameMatches = options.IsCaseSensitive
+                    ? folder.Name.Equals(options.Expression)
+                    : folder.Name.Equals(options.Expression, StringComparison.OrdinalIgnoreCase);
+            }
             else
             {
+                // Contains match for folder name
                 folderNameMatches = options.IsCaseSensitive
                     ? folder.Name.Contains(options.Expression)
                     : folder.Name.Contains(options.Expression, StringComparison.OrdinalIgnoreCase);
