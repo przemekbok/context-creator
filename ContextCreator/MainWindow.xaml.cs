@@ -27,6 +27,54 @@ namespace ContextCreator
             // Create view model
             _viewModel = new MainViewModel();
             DataContext = _viewModel;
+
+            // Add keyboard shortcuts
+            InitializeKeyboardShortcuts();
+        }
+
+        private void InitializeKeyboardShortcuts()
+        {
+            // Create keyboard shortcuts
+            var commands = new[]
+            {
+                new { Key = Key.O, Modifiers = ModifierKeys.Control, Command = _viewModel.OpenFolderCommand },
+                new { Key = Key.S, Modifiers = ModifierKeys.Control, Command = _viewModel.SaveConfigurationCommand },
+                new { Key = Key.L, Modifiers = ModifierKeys.Control, Command = _viewModel.LoadConfigurationCommand },
+                new { Key = Key.E, Modifiers = ModifierKeys.Control, Command = _viewModel.ExportContextCommand },
+                new { Key = Key.F, Modifiers = ModifierKeys.Control, Command = null, Action = () => ContentFilterMenuItem_Click(this, new RoutedEventArgs()) },
+                new { Key = Key.F, Modifiers = ModifierKeys.Control | ModifierKeys.Alt, Command = null, Action = () => FilenameFilterMenuItem_Click(this, new RoutedEventArgs()) },
+                new { Key = Key.Escape, Modifiers = ModifierKeys.None, Command = _viewModel.ClearFiltersCommand },
+                new { Key = Key.M, Modifiers = ModifierKeys.Control, Command = _viewModel.SelectMatchingCommand },
+                new { Key = Key.M, Modifiers = ModifierKeys.Control | ModifierKeys.Alt, Command = _viewModel.DeselectMatchingCommand },
+                new { Key = Key.E, Modifiers = ModifierKeys.Control | ModifierKeys.Alt, Command = _viewModel.CollapseAllCommand },
+                new { Key = Key.P, Modifiers = ModifierKeys.Control, Command = _viewModel.ShowMatchingPathsCommand },
+                new { Key = Key.T, Modifiers = ModifierKeys.Control, Command = _viewModel.EstimateTokenCountCommand },
+                new { Key = Key.A, Modifiers = ModifierKeys.Control, Command = _viewModel.SelectAllCommand },
+                new { Key = Key.D, Modifiers = ModifierKeys.Control, Command = _viewModel.DeselectAllCommand },
+                new { Key = Key.I, Modifiers = ModifierKeys.Control, Command = _viewModel.InvertSelectionCommand },
+                new { Key = Key.N, Modifiers = ModifierKeys.Control, Command = _viewModel.CreateFolderWithSetupCommand }
+            };
+
+            // Add key bindings to the window
+            foreach (var command in commands)
+            {
+                var binding = new KeyBinding
+                {
+                    Key = command.Key,
+                    Modifiers = command.Modifiers
+                };
+
+                if (command.Command != null)
+                {
+                    binding.Command = command.Command;
+                }
+                else if (command.Action != null)
+                {
+                    binding.Command = new RelayCommand(command.Action);
+                }
+
+                InputBindings.Add(binding);
+            }
         }
 
         private void FolderTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -138,6 +186,35 @@ namespace ContextCreator
         {
             // Close application
             Close();
+        }
+    }
+
+    /// <summary>
+    /// Helper class for keyboard shortcuts
+    /// </summary>
+    public class RelayCommand : ICommand
+    {
+        private readonly Action _execute;
+
+        public RelayCommand(Action execute)
+        {
+            _execute = execute ?? throw new System.ArgumentNullException(nameof(execute));
+        }
+
+        public bool CanExecute(object parameter)
+        {
+            return true;
+        }
+
+        public void Execute(object parameter)
+        {
+            _execute();
+        }
+
+        public event EventHandler CanExecuteChanged
+        {
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
         }
     }
 }
