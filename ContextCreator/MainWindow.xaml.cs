@@ -1,6 +1,8 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using ContextCreator.Commands;
 using ContextCreator.Models;
 using ContextCreator.Services;
 using ContextCreator.ViewModels;
@@ -34,47 +36,31 @@ namespace ContextCreator
 
         private void InitializeKeyboardShortcuts()
         {
-            // Create keyboard shortcuts
-            var commands = new[]
-            {
-                new { Key = Key.O, Modifiers = ModifierKeys.Control, Command = _viewModel.OpenFolderCommand },
-                new { Key = Key.S, Modifiers = ModifierKeys.Control, Command = _viewModel.SaveConfigurationCommand },
-                new { Key = Key.L, Modifiers = ModifierKeys.Control, Command = _viewModel.LoadConfigurationCommand },
-                new { Key = Key.E, Modifiers = ModifierKeys.Control, Command = _viewModel.ExportContextCommand },
-                new { Key = Key.F, Modifiers = ModifierKeys.Control, Command = null, Action = () => ContentFilterMenuItem_Click(this, new RoutedEventArgs()) },
-                new { Key = Key.F, Modifiers = ModifierKeys.Control | ModifierKeys.Alt, Command = null, Action = () => FilenameFilterMenuItem_Click(this, new RoutedEventArgs()) },
-                new { Key = Key.Escape, Modifiers = ModifierKeys.None, Command = _viewModel.ClearFiltersCommand },
-                new { Key = Key.M, Modifiers = ModifierKeys.Control, Command = _viewModel.SelectMatchingCommand },
-                new { Key = Key.M, Modifiers = ModifierKeys.Control | ModifierKeys.Alt, Command = _viewModel.DeselectMatchingCommand },
-                new { Key = Key.E, Modifiers = ModifierKeys.Control | ModifierKeys.Alt, Command = _viewModel.CollapseAllCommand },
-                new { Key = Key.P, Modifiers = ModifierKeys.Control, Command = _viewModel.ShowMatchingPathsCommand },
-                new { Key = Key.T, Modifiers = ModifierKeys.Control, Command = _viewModel.EstimateTokenCountCommand },
-                new { Key = Key.A, Modifiers = ModifierKeys.Control, Command = _viewModel.SelectAllCommand },
-                new { Key = Key.D, Modifiers = ModifierKeys.Control, Command = _viewModel.DeselectAllCommand },
-                new { Key = Key.I, Modifiers = ModifierKeys.Control, Command = _viewModel.InvertSelectionCommand },
-                new { Key = Key.N, Modifiers = ModifierKeys.Control, Command = _viewModel.CreateFolderWithSetupCommand }
-            };
+            // Add main keyboard shortcuts
+            AddKeyBinding(Key.N, ModifierKeys.Control, _viewModel.CreateFolderWithSetupCommand);
+            AddKeyBinding(Key.O, ModifierKeys.Control, _viewModel.OpenFolderCommand);
+            AddKeyBinding(Key.S, ModifierKeys.Control, _viewModel.SaveConfigurationCommand);
+            AddKeyBinding(Key.L, ModifierKeys.Control, _viewModel.LoadConfigurationCommand);
+            AddKeyBinding(Key.E, ModifierKeys.Control, _viewModel.ExportContextCommand);
+            AddKeyBinding(Key.A, ModifierKeys.Control, _viewModel.SelectAllCommand);
+            AddKeyBinding(Key.D, ModifierKeys.Control, _viewModel.DeselectAllCommand);
+            AddKeyBinding(Key.I, ModifierKeys.Control, _viewModel.InvertSelectionCommand);
+            AddKeyBinding(Key.T, ModifierKeys.Control, _viewModel.EstimateTokenCountCommand);
+            AddKeyBinding(Key.Escape, ModifierKeys.None, _viewModel.ClearFiltersCommand);
+            
+            // Filter commands
+            var contentFilterCommand = new RoutedCommand();
+            CommandBindings.Add(new CommandBinding(contentFilterCommand, (s, e) => ContentFilterMenuItem_Click(this, new RoutedEventArgs())));
+            AddKeyBinding(Key.F, ModifierKeys.Control, contentFilterCommand);
+            
+            var filenameFilterCommand = new RoutedCommand();
+            CommandBindings.Add(new CommandBinding(filenameFilterCommand, (s, e) => FilenameFilterMenuItem_Click(this, new RoutedEventArgs())));
+            AddKeyBinding(Key.F, ModifierKeys.Control | ModifierKeys.Alt, filenameFilterCommand);
+        }
 
-            // Add key bindings to the window
-            foreach (var command in commands)
-            {
-                var binding = new KeyBinding
-                {
-                    Key = command.Key,
-                    Modifiers = command.Modifiers
-                };
-
-                if (command.Command != null)
-                {
-                    binding.Command = command.Command;
-                }
-                else if (command.Action != null)
-                {
-                    binding.Command = new RelayCommand(command.Action);
-                }
-
-                InputBindings.Add(binding);
-            }
+        private void AddKeyBinding(Key key, ModifierKeys modifiers, ICommand command)
+        {
+            InputBindings.Add(new KeyBinding(command, key, modifiers));
         }
 
         private void FolderTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -186,35 +172,6 @@ namespace ContextCreator
         {
             // Close application
             Close();
-        }
-    }
-
-    /// <summary>
-    /// Helper class for keyboard shortcuts
-    /// </summary>
-    public class RelayCommand : ICommand
-    {
-        private readonly Action _execute;
-
-        public RelayCommand(Action execute)
-        {
-            _execute = execute ?? throw new System.ArgumentNullException(nameof(execute));
-        }
-
-        public bool CanExecute(object parameter)
-        {
-            return true;
-        }
-
-        public void Execute(object parameter)
-        {
-            _execute();
-        }
-
-        public event EventHandler CanExecuteChanged
-        {
-            add { CommandManager.RequerySuggested += value; }
-            remove { CommandManager.RequerySuggested -= value; }
         }
     }
 }
