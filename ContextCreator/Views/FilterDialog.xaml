@@ -1,0 +1,63 @@
+<Window x:Class="ContextCreator.Views.FilterDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ContextCreator.Views"
+        xmlns:models="clr-namespace:ContextCreator.Models"
+        xmlns:converters="clr-namespace:ContextCreator.Converters"
+        mc:Ignorable="d"
+        Title="Filter Files" Height="300" Width="400" WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <converters:EnumToBoolConverter x:Key="EnumToBoolConverter"/>
+        <converters:StringToBoolConverter x:Key="StringToBoolConverter"/>
+    </Window.Resources>
+    
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Filter Type -->
+        <GroupBox Grid.Row="0" Header="Filter Type" Margin="0,0,0,10">
+            <StackPanel>
+                <RadioButton Content="Content Filter" IsChecked="{Binding FilterType, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:FilterType.Content}}" Margin="5"/>
+                <RadioButton Content="Filename Filter" IsChecked="{Binding FilterType, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:FilterType.FileName}}" Margin="5"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Filter Expression -->
+        <GroupBox Grid.Row="1" Header="Filter Expression" Margin="0,0,0,10">
+            <TextBox Text="{Binding FilterExpression, UpdateSourceTrigger=PropertyChanged}" Margin="5" AcceptsReturn="False"/>
+        </GroupBox>
+
+        <!-- Action -->
+        <GroupBox Grid.Row="2" Header="Action" Margin="0,0,0,10">
+            <StackPanel>
+                <RadioButton Content="Include matching files" IsChecked="{Binding FilterAction, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:FilterAction.Include}}" Margin="5"/>
+                <RadioButton Content="Exclude matching files" IsChecked="{Binding FilterAction, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:FilterAction.Exclude}}" Margin="5"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Options -->
+        <GroupBox Grid.Row="3" Header="Options" Margin="0,0,0,10">
+            <StackPanel>
+                <CheckBox Content="Case sensitive" IsChecked="{Binding IsCaseSensitive}" Margin="5"/>
+                <CheckBox Content="Regular expression" IsChecked="{Binding IsRegex}" Margin="5"/>
+                <CheckBox Content="Apply to selected folders only" IsChecked="{Binding ApplyToSelectedFoldersOnly}" Margin="5"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="Cancel" Width="75" Command="{Binding CancelCommand}" Margin="0,0,10,0"/>
+            <Button Content="Apply" Width="75" Command="{Binding ApplyCommand}"
+                    IsEnabled="{Binding FilterExpression, Converter={StaticResource StringToBoolConverter}}"/>
+        </StackPanel>
+    </Grid>
+</Window>
