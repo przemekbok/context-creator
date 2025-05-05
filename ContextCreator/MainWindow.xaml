@@ -15,6 +15,13 @@
         <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
         <converters:MatchTypeToHighlightConverter x:Key="MatchTypeToHighlightConverter"/>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        
+        <!-- Style for TreeViewItem to handle proper scrolling -->
+        <Style x:Key="TreeViewItemStyle" TargetType="{x:Type TreeViewItem}">
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+            <Setter Property="Focusable" Value="True"/>
+        </Style>
     </Window.Resources>
     
     <DockPanel>
@@ -132,36 +139,38 @@
                 </Grid>
 
                 <Border Grid.Row="1" BorderBrush="#CCCCCC" BorderThickness="1" Margin="5">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <TreeView x:Name="FolderTreeView" ItemsSource="{Binding RootFolderCollection}">
-                            <TreeView.Resources>
-                                <!-- Folder Template with combined ItemsSource for Folders and Files -->
-                                <HierarchicalDataTemplate DataType="{x:Type models:FolderItem}" ItemsSource="{Binding Items}">
-                                    <StackPanel Orientation="Horizontal" Margin="3">
-                                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
-                                        <Image Source="/Resources/folder.png" Width="16" Height="16" Margin="5,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
-                                                  Background="{Binding MatchType, Converter={StaticResource MatchTypeToHighlightConverter}}"/>
-                                    </StackPanel>
-                                </HierarchicalDataTemplate>
+                    <!-- Remove the ScrollViewer as the TreeView will handle scrolling internally -->
+                    <TreeView x:Name="FolderTreeView" 
+                              ItemsSource="{Binding RootFolderCollection}"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                              VirtualizingStackPanel.IsVirtualizing="True"
+                              VirtualizingStackPanel.VirtualizationMode="Recycling">
+                        <TreeView.Resources>
+                            <!-- Folder Template with combined ItemsSource for Folders and Files -->
+                            <HierarchicalDataTemplate DataType="{x:Type models:FolderItem}" ItemsSource="{Binding Items}">
+                                <StackPanel Orientation="Horizontal" Margin="3">
+                                    <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                                    <Image Source="/Resources/folder.png" Width="16" Height="16" Margin="5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                              Background="{Binding MatchType, Converter={StaticResource MatchTypeToHighlightConverter}}"/>
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
 
-                                <!-- File Template -->
-                                <DataTemplate DataType="{x:Type models:FileItem}">
-                                    <StackPanel Orientation="Horizontal" Margin="3">
-                                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
-                                        <Image Source="/Resources/file.png" Width="16" Height="16" Margin="5,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
-                                                  Background="{Binding MatchType, Converter={StaticResource MatchTypeToHighlightConverter}}"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </TreeView.Resources>
-                            <TreeView.ItemContainerStyle>
-                                <Style TargetType="{x:Type TreeViewItem}">
-                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-                                </Style>
-                            </TreeView.ItemContainerStyle>
-                        </TreeView>
-                    </ScrollViewer>
+                            <!-- File Template -->
+                            <DataTemplate DataType="{x:Type models:FileItem}">
+                                <StackPanel Orientation="Horizontal" Margin="3">
+                                    <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                                    <Image Source="/Resources/file.png" Width="16" Height="16" Margin="5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                              Background="{Binding MatchType, Converter={StaticResource MatchTypeToHighlightConverter}}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </TreeView.Resources>
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource TreeViewItemStyle}"/>
+                        </TreeView.ItemContainerStyle>
+                    </TreeView>
                 </Border>
             </Grid>
             
