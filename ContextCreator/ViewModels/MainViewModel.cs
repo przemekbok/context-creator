@@ -723,6 +723,16 @@ namespace ContextCreator.ViewModels
                     // Update token estimation after applying selection
                     ExecuteEstimateTokenCount();
                 }
+                else
+                {
+                    StatusMessage = "Error: Root folder from configuration does not exist";
+                    _dialogService.ShowMessageBox(
+                        "The folder specified in the configuration does not exist: " + CurrentConfiguration.RootFolder,
+                        "Error Loading Configuration", 
+                        System.Windows.MessageBoxButton.OK, 
+                        System.Windows.MessageBoxImage.Error);
+                    return;
+                }
                 
                 // Add to recent configurations
                 if (!RecentConfigurations.Contains(filePath))
@@ -739,7 +749,56 @@ namespace ContextCreator.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = $"Error loading configuration: {ex.Message}";
+                _dialogService.ShowMessageBox(
+                    $"Error loading configuration:\n{ex.Message}", 
+                    "Error", 
+                    System.Windows.MessageBoxButton.OK, 
+                    System.Windows.MessageBoxImage.Error);
             }
+        }
+
+        private void ApplySelection(FolderItem folder, List<string> selectedPaths)
+        {
+            // Ensure content is loaded
+            folder.EnsureContentLoaded();
+            
+            // Set selection for files
+            foreach (var file in folder.Files)
+            {
+                file.IsSelected = selectedPaths.Contains(file.FullPath);
+            }
+            
+            // Recursively process subfolders
+            foreach (var subFolder in folder.Folders)
+            {
+                ApplySelection(subFolder, selectedPaths);
+            }
+            
+            // Update folder selection status based on its children
+            UpdateFolderSelectionStatus(folder);
+        }
+
+        private void UpdateFolderSelectionStatus(FolderItem folder)
+        {
+            // A folder is selected if ALL its files and subfolders are selected
+            bool allFilesSelected = folder.Files.Count > 0 && folder.Files.All(f => f.IsSelected);
+            bool allFoldersSelected = folder.Folders.Count > 0 && folder.Folders.All(f => f.IsSelected);
+            
+            // If there are no files or folders, don't change selection state
+            if (folder.Files.Count == 0 && folder.Folders.Count == 0)
+                return;
+            
+            // If there are only files but no folders
+            if (folder.Files.Count > 0 && folder.Folders.Count == 0)
+                folder.IsSelected = allFilesSelected;
+            
+            // If there are only folders but no files
+            else if (folder.Files.Count == 0 && folder.Folders.Count > 0)
+                folder.IsSelected = allFoldersSelected;
+            
+            // If there are both files and folders
+            else
+                folder.IsSelected = allFilesSelected && allFoldersSelected;
         }
 
         private void ExecuteExportContext()
@@ -1103,24 +1162,6 @@ namespace ContextCreator.ViewModels
             {
                 CollectSelectedPaths(subFolder, selectedPaths);
             }
-        }
-
-        private void ApplySelection(FolderItem folder, List<string> selectedPaths)
-        {
-            // Set selection for files
-            foreach (var file in folder.Files)
-            {
-                file.IsSelected = selectedPaths.Contains(file.FullPath);
-            }
-            
-            // Recursively process subfolders
-            foreach (var subFolder in folder.Folders)
-            {
-                ApplySelection(subFolder, selectedPaths);
-            }
-            
-            // Update folder selection status
-            folder.IsSelected = folder.Files.All(f => f.IsSelected) && folder.Folders.All(f => f.IsSelected);
         }
 
         private ExportFormat GetExportFormatFromExtension(string extension)
