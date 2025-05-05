@@ -8,6 +8,7 @@ using System.Windows.Input;
 using ContextCreator.Commands;
 using ContextCreator.Models;
 using ContextCreator.Services;
+using MatchType = ContextCreator.Models.MatchType;
 
 namespace ContextCreator.ViewModels
 {

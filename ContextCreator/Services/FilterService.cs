@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ContextCreator.Models;
+using MatchType = ContextCreator.Models.MatchType;
 
 namespace ContextCreator.Services
 {
