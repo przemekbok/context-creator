@@ -106,7 +106,7 @@
 
                 <Border Grid.Row="1" BorderBrush="#CCCCCC" BorderThickness="1" Margin="5">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <TreeView x:Name="FolderTreeView">
+                        <TreeView x:Name="FolderTreeView" ItemsSource="{Binding RootFolderCollection}">
                             <TreeView.Resources>
                                 <!-- Folder Template -->
                                 <HierarchicalDataTemplate DataType="{x:Type models:FolderItem}" ItemsSource="{Binding Folders}">
@@ -133,7 +133,6 @@
                                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                                 </Style>
                             </TreeView.ItemContainerStyle>
-                            <TreeViewItem ItemsSource="{Binding RootFolder}" Header="{Binding RootFolder.FullPath}" IsExpanded="True"/>
                         </TreeView>
                     </ScrollViewer>
                 </Border>

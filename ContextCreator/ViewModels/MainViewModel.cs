@@ -33,7 +33,29 @@ namespace ContextCreator.ViewModels
         public FolderItem? RootFolder
         {
             get => _rootFolder;
-            private set => SetProperty(ref _rootFolder, value);
+            private set
+            {
+                if (SetProperty(ref _rootFolder, value))
+                {
+                    OnPropertyChanged(nameof(RootFolderCollection));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the collection containing the root folder for TreeView binding
+        /// </summary>
+        public ObservableCollection<FolderItem> RootFolderCollection
+        {
+            get
+            {
+                ObservableCollection<FolderItem> collection = new ObservableCollection<FolderItem>();
+                if (RootFolder != null)
+                {
+                    collection.Add(RootFolder);
+                }
+                return collection;
+            }
         }
 
         /// <summary>
