@@ -1,12 +1,153 @@
-﻿<Window x:Class="ContextCreator.MainWindow"
+<Window x:Class="ContextCreator.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ContextCreator"
+        xmlns:views="clr-namespace:ContextCreator.Views"
+        xmlns:models="clr-namespace:ContextCreator.Models"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="LLM Context Preparation Tool" Height="650" Width="1000"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <!-- Menu Bar -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Open Folder..." Command="{Binding OpenFolderCommand}" InputGestureText="Ctrl+O"/>
+                <MenuItem Header="_Recent Folders">
+                    <MenuItem Header="No Recent Folders" IsEnabled="False"
+                              Visibility="{Binding RecentFolders.Count, Converter={StaticResource CountToVisibilityConverter}, ConverterParameter=0}"/>
+                    <ItemsControl ItemsSource="{Binding RecentFolders}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <MenuItem Header="{Binding}" Command="{Binding DataContext.OpenRecentFolderCommand, RelativeSource={RelativeSource AncestorType=Menu}}" CommandParameter="{Binding}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="_Export Context..." Command="{Binding ExportContextCommand}" InputGestureText="Ctrl+E"/>
+                <Separator/>
+                <MenuItem Header="E_xit" Click="ExitMenuItem_Click" InputGestureText="Alt+F4"/>
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Select All" Command="{Binding SelectAllCommand}" InputGestureText="Ctrl+A"/>
+                <MenuItem Header="_Deselect All" Command="{Binding DeselectAllCommand}" InputGestureText="Ctrl+D"/>
+                <MenuItem Header="_Invert Selection" Command="{Binding InvertSelectionCommand}" InputGestureText="Ctrl+I"/>
+                <Separator/>
+                <MenuItem Header="_Save Configuration..." Command="{Binding SaveConfigurationCommand}" InputGestureText="Ctrl+S"/>
+                <MenuItem Header="_Load Configuration..." Command="{Binding LoadConfigurationCommand}" InputGestureText="Ctrl+L"/>
+                <MenuItem Header="Recent _Configurations">
+                    <MenuItem Header="No Recent Configurations" IsEnabled="False"
+                              Visibility="{Binding RecentConfigurations.Count, Converter={StaticResource CountToVisibilityConverter}, ConverterParameter=0}"/>
+                    <ItemsControl ItemsSource="{Binding RecentConfigurations}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <MenuItem Header="{Binding}" Command="{Binding DataContext.LoadRecentConfigurationCommand, RelativeSource={RelativeSource AncestorType=Menu}}" CommandParameter="{Binding}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="_Tools">
+                <MenuItem Header="_Content Filter..." Click="ContentFilterMenuItem_Click" InputGestureText="Ctrl+F"/>
+                <MenuItem Header="_Filename Filter..." Click="FilenameFilterMenuItem_Click" InputGestureText="Ctrl+Alt+F"/>
+                <MenuItem Header="_Clear Filters" Command="{Binding ClearFiltersCommand}" InputGestureText="Esc"/>
+                <Separator/>
+                <MenuItem Header="_Estimate Token Count" Command="{Binding EstimateTokenCountCommand}" InputGestureText="Ctrl+T"/>
+                <Separator/>
+                <MenuItem Header="_Settings..." Click="SettingsMenuItem_Click"/>
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_About" Click="AboutMenuItem_Click"/>
+            </MenuItem>
+        </Menu>
 
-    </Grid>
+        <!-- Status Bar -->
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock Text="{Binding SelectedFileCount, StringFormat='{}{0} files selected'}"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock Text="{Binding FormattedSelectedFileSize, StringFormat='Size: {0}'}"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock Text="{Binding EstimatedTokenCount, StringFormat='Est. tokens: {0:N0}'}"/>
+            </StatusBarItem>
+        </StatusBar>
+
+        <!-- Main Content Area -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="350"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- File Explorer (Left Panel) -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Explorer" FontWeight="Bold" Margin="5"/>
+
+                <Border Grid.Row="1" BorderBrush="#CCCCCC" BorderThickness="1" Margin="5">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <TreeView x:Name="FolderTreeView" ItemsSource="{Binding RootFolder}">
+                            <TreeView.Resources>
+                                <!-- Folder Template -->
+                                <HierarchicalDataTemplate DataType="{x:Type models:FolderItem}" ItemsSource="{Binding Folders}">
+                                    <StackPanel Orientation="Horizontal" Margin="3">
+                                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                                        <Image Source="/Resources/folder.png" Width="16" Height="16" Margin="5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                                  Background="{Binding IsMatch, Converter={StaticResource BoolToHighlightConverter}}"/>
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+
+                                <!-- File Template -->
+                                <DataTemplate DataType="{x:Type models:FileItem}">
+                                    <StackPanel Orientation="Horizontal" Margin="3">
+                                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                                        <Image Source="/Resources/file.png" Width="16" Height="16" Margin="5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                                  Background="{Binding IsMatch, Converter={StaticResource BoolToHighlightConverter}}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </TreeView.Resources>
+                            <TreeView.ItemContainerStyle>
+                                <Style TargetType="{x:Type TreeViewItem}">
+                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                                </Style>
+                            </TreeView.ItemContainerStyle>
+                        </TreeView>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+
+            <!-- Content Preview (Right Panel) -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Content Preview" FontWeight="Bold" Margin="5"/>
+
+                <Border Grid.Row="1" BorderBrush="#CCCCCC" BorderThickness="1" Margin="5">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                        <TextBox x:Name="ContentPreviewTextBox" IsReadOnly="True" FontFamily="Consolas" FontSize="12"
+                                 BorderThickness="0" Text="{Binding PreviewContent}"/>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+        </Grid>
+    </DockPanel>
 </Window>
