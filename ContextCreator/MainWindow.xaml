@@ -108,8 +108,8 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <TreeView x:Name="FolderTreeView" ItemsSource="{Binding RootFolderCollection}">
                             <TreeView.Resources>
-                                <!-- Folder Template -->
-                                <HierarchicalDataTemplate DataType="{x:Type models:FolderItem}" ItemsSource="{Binding Folders}">
+                                <!-- Folder Template with combined ItemsSource for Folders and Files -->
+                                <HierarchicalDataTemplate DataType="{x:Type models:FolderItem}" ItemsSource="{Binding Items}">
                                     <StackPanel Orientation="Horizontal" Margin="3">
                                         <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
                                         <Image Source="/Resources/folder.png" Width="16" Height="16" Margin="5,0" VerticalAlignment="Center"/>

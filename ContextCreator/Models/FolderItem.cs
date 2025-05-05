@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Collections.Generic;
 
 namespace ContextCreator.Models
 {
@@ -16,12 +17,43 @@ namespace ContextCreator.Models
         private bool _isSelected;
         private bool _isLoaded;
         private bool _isMatch;
+        private ObservableCollection<object> _items;
 
         public string Name { get; }
         public string FullPath { get; }
         public FolderItem? Parent { get; }
         public ObservableCollection<FolderItem> Folders { get; } = new ObservableCollection<FolderItem>();
         public ObservableCollection<FileItem> Files { get; } = new ObservableCollection<FileItem>();
+
+        /// <summary>
+        /// Gets a combined collection of folders and files for use in the TreeView
+        /// </summary>
+        public ObservableCollection<object> Items
+        {
+            get
+            {
+                if (_items == null)
+                {
+                    _items = new ObservableCollection<object>();
+                    // When Items is accessed and the folder is expanded, ensure content is loaded
+                    if (_isExpanded && !_isLoaded)
+                    {
+                        LoadContent();
+                    }
+                    
+                    // Add folders first, then files
+                    foreach (var folder in Folders)
+                    {
+                        _items.Add(folder);
+                    }
+                    foreach (var file in Files)
+                    {
+                        _items.Add(file);
+                    }
+                }
+                return _items;
+            }
+        }
 
         public bool IsExpanded
         {
@@ -36,6 +68,8 @@ namespace ContextCreator.Models
                         LoadContent();
                     }
                     OnPropertyChanged();
+                    // When expansion changes, refresh the items collection
+                    RefreshItems();
                 }
             }
         }
@@ -92,6 +126,26 @@ namespace ContextCreator.Models
             Parent = parent;
         }
 
+        /// <summary>
+        /// Refreshes the combined items collection when folders or files change
+        /// </summary>
+        public void RefreshItems()
+        {
+            if (_items != null)
+            {
+                _items.Clear();
+                foreach (var folder in Folders)
+                {
+                    _items.Add(folder);
+                }
+                foreach (var file in Files)
+                {
+                    _items.Add(file);
+                }
+                OnPropertyChanged(nameof(Items));
+            }
+        }
+
         public void LoadContent()
         {
             if (_isLoaded) return;
@@ -113,6 +167,7 @@ namespace ContextCreator.Models
                 }
 
                 _isLoaded = true;
+                RefreshItems(); // Update the Items collection after loading content
             }
             catch (Exception ex)
             {
