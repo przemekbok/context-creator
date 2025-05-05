@@ -1,0 +1,11 @@
+.vs/
+
+# Ignore bin directory
+bin/
+/bin/
+**/bin/
+
+# Ignore obj directory
+obj/
+/obj/
+**/obj/
