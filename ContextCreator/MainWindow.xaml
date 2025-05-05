@@ -67,6 +67,7 @@
                     <MenuItem Header="_Deselect Matching Items" Command="{Binding DeselectMatchingCommand}" InputGestureText="Ctrl+Alt+M"/>
                     <MenuItem Header="_Expand Matching Paths" Command="{Binding ExpandMatchingCommand}" InputGestureText="Ctrl+E"/>
                     <MenuItem Header="_Collapse All" Command="{Binding CollapseAllCommand}" InputGestureText="Ctrl+Alt+E"/>
+                    <MenuItem Header="_Show Matching Paths List" Command="{Binding ShowMatchingPathsCommand}" InputGestureText="Ctrl+P"/>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="_Estimate Token Count" Command="{Binding EstimateTokenCountCommand}" InputGestureText="Ctrl+T"/>
@@ -95,6 +96,10 @@
             <StatusBarItem>
                 <TextBlock Text="{Binding EstimatedTokenCount, StringFormat='Est. tokens: {0:N0}'}"/>
             </StatusBarItem>
+            <Separator Visibility="{Binding HasActiveFilter, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            <StatusBarItem Visibility="{Binding HasActiveFilter, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock Text="{Binding MatchCount, StringFormat='Matches: {0}'}"/>
+            </StatusBarItem>
         </StatusBar>
 
         <!-- Main Content Area -->
@@ -122,6 +127,7 @@
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,5,0" Visibility="{Binding HasActiveFilter, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Button Content="Select Matches" Command="{Binding SelectMatchingCommand}" Margin="2,0" ToolTip="Select all matching items" Padding="3,0"/>
                         <Button Content="Deselect Matches" Command="{Binding DeselectMatchingCommand}" Margin="2,0" ToolTip="Deselect all matching items" Padding="3,0"/>
+                        <Button Content="Show Paths" Command="{Binding ShowMatchingPathsCommand}" Margin="2,0" ToolTip="Show list of matching paths" Padding="3,0"/>
                     </StackPanel>
                 </Grid>
 
@@ -175,7 +181,15 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="Content Preview" FontWeight="Bold" Margin="5"/>
+                <DockPanel Grid.Row="0">
+                    <TextBlock Text="Content Preview" FontWeight="Bold" Margin="5"/>
+                    <Button Content="Show Matching Paths" 
+                            Command="{Binding ShowMatchingPathsCommand}" 
+                            HorizontalAlignment="Right" 
+                            Margin="0,0,5,0" 
+                            Padding="5,0"
+                            Visibility="{Binding HasActiveFilter, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                </DockPanel>
 
                 <Border Grid.Row="1" BorderBrush="#CCCCCC" BorderThickness="1" Margin="5">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
