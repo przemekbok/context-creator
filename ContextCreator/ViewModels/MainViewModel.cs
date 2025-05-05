@@ -251,6 +251,11 @@ namespace ContextCreator.ViewModels
         public ICommand ShowMatchingPathsCommand { get; }
 
         /// <summary>
+        /// Gets the command to create a new folder with the current setup
+        /// </summary>
+        public ICommand CreateFolderWithSetupCommand { get; }
+
+        /// <summary>
         /// Initializes a new instance of the MainViewModel class
         /// </summary>
         public MainViewModel()
@@ -278,9 +283,131 @@ namespace ContextCreator.ViewModels
             DeselectAllCommand = new RelayCommand(_ => ExecuteDeselectAll());
             InvertSelectionCommand = new RelayCommand(_ => ExecuteInvertSelection());
             ShowMatchingPathsCommand = new RelayCommand(_ => ExecuteShowMatchingPaths(), _ => HasActiveFilter);
+            CreateFolderWithSetupCommand = new RelayCommand(_ => ExecuteCreateFolderWithSetup(), _ => RootFolder != null);
 
             // Load recent folders and configurations
             LoadRecentItems();
+        }
+
+        /// <summary>
+        /// Creates a new folder with the current selected file structure
+        /// </summary>
+        private void ExecuteCreateFolderWithSetup()
+        {
+            if (RootFolder == null)
+            {
+                _dialogService.ShowMessageBox("No folder loaded", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                return;
+            }
+
+            // Ask for a destination folder
+            var destFolderPath = _dialogService.ShowFolderBrowserDialog("Select a destination folder");
+            if (string.IsNullOrEmpty(destFolderPath))
+            {
+                return;
+            }
+
+            try
+            {
+                StatusMessage = "Creating folder with selected files...";
+
+                // Get the name of the root folder
+                string rootFolderName = Path.GetFileName(RootFolder.FullPath);
+                if (string.IsNullOrEmpty(rootFolderName))
+                {
+                    // For drive roots (C:\), use a default name
+                    rootFolderName = "Context";
+                }
+
+                // Create the target folder
+                string newFolderPath = Path.Combine(destFolderPath, rootFolderName);
+
+                // If the folder already exists, add a suffix
+                int suffix = 1;
+                string originalPath = newFolderPath;
+                while (Directory.Exists(newFolderPath))
+                {
+                    newFolderPath = $"{originalPath}_{suffix}";
+                    suffix++;
+                }
+
+                // Create the directory
+                Directory.CreateDirectory(newFolderPath);
+
+                // Collect selected files
+                var selectedFiles = new List<string>();
+                CollectSelectedPaths(RootFolder, selectedFiles);
+
+                if (!selectedFiles.Any())
+                {
+                    StatusMessage = "No files selected";
+                    return;
+                }
+
+                int copiedFiles = 0;
+                long totalSize = 0;
+
+                foreach (var filePath in selectedFiles)
+                {
+                    // Calculate the relative path from the root folder
+                    string relativePath = GetRelativePath(RootFolder.FullPath, filePath);
+                    
+                    // Determine the target path
+                    string targetPath = Path.Combine(newFolderPath, relativePath);
+                    
+                    // Create the directory structure
+                    Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+                    
+                    // Copy the file
+                    File.Copy(filePath, targetPath);
+                    
+                    // Update statistics
+                    copiedFiles++;
+                    totalSize += new FileInfo(filePath).Length;
+                }
+
+                // Show success message
+                StatusMessage = $"Created folder with {copiedFiles} files ({FormatFileSize(totalSize)})";
+
+                // Ask if the user wants to open the new folder
+                var result = _dialogService.ShowMessageBox(
+                    $"Successfully created folder with {copiedFiles} files.\n\nDo you want to open the new folder?",
+                    "Folder Created",
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Information);
+
+                if (result == System.Windows.MessageBoxResult.Yes)
+                {
+                    OpenFolder(newFolderPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error creating folder: {ex.Message}";
+                _dialogService.ShowMessageBox($"Error creating folder: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Gets the relative path from a base directory to a full path
+        /// </summary>
+        private string GetRelativePath(string basePath, string fullPath)
+        {
+            if (!basePath.EndsWith(Path.DirectorySeparatorChar.ToString()))
+            {
+                basePath += Path.DirectorySeparatorChar;
+            }
+
+            Uri baseUri = new Uri(basePath);
+            Uri fullUri = new Uri(fullPath);
+
+            Uri relativeUri = baseUri.MakeRelativeUri(fullUri);
+            string relativePath = Uri.UnescapeDataString(relativeUri.ToString());
+
+            // Replace forward slashes with the platform-specific directory separator
+            relativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
+
+            return relativePath;
         }
 
         /// <summary>
