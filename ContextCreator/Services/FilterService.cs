@@ -35,15 +35,21 @@ namespace ContextCreator.Services
             
             // Ensure content is loaded for all folders for proper display
             EnsureContentLoaded(rootFolder);
+            
+            // Mark all folders in paths to matches with the Ancestor match type
+            MarkAncestorFolders(rootFolder);
+            
+            // Expand all folders that lead to matches
+            rootFolder.ExpandToMatches();
         }
 
         private void ResetMatches(FolderItem folder)
         {
-            folder.IsMatch = false;
+            folder.MatchType = MatchType.None;
             
             foreach (var file in folder.Files)
             {
-                file.IsMatch = false;
+                file.MatchType = MatchType.None;
             }
 
             foreach (var subFolder in folder.Folders)
@@ -61,6 +67,43 @@ namespace ContextCreator.Services
             foreach (var subFolder in folder.Folders)
             {
                 EnsureContentLoaded(subFolder);
+            }
+        }
+        
+        private void MarkAncestorFolders(FolderItem folder)
+        {
+            bool hasDirectMatch = folder.MatchType == MatchType.Direct ||
+                                  folder.Files.Any(f => f.MatchType == MatchType.Direct);
+            
+            bool hasMatchingChildren = folder.Folders.Any(f => 
+                f.MatchType == MatchType.Direct || 
+                f.MatchType == MatchType.Ancestor);
+            
+            // If folder has direct matches or matching children, mark parents as ancestors
+            if (hasDirectMatch || hasMatchingChildren)
+            {
+                MarkParentsAsAncestors(folder);
+            }
+            
+            // Recursively process all subfolders
+            foreach (var subFolder in folder.Folders)
+            {
+                MarkAncestorFolders(subFolder);
+            }
+        }
+        
+        private void MarkParentsAsAncestors(FolderItem folder)
+        {
+            var parent = folder.Parent;
+            while (parent != null)
+            {
+                // Only change if it's not already a direct match
+                if (parent.MatchType != MatchType.Direct)
+                {
+                    parent.MatchType = MatchType.Ancestor;
+                }
+                
+                parent = parent.Parent;
             }
         }
 
@@ -101,16 +144,54 @@ namespace ContextCreator.Services
                 }
 
                 // Apply the action (include/exclude)
-                file.IsMatch = options.Action == FilterAction.Include ? isMatch : !isMatch;
-                
-                // If a file matches, the parent folder should also match
-                if (file.IsMatch)
+                if (options.Action == FilterAction.Include)
                 {
-                    folder.IsMatch = true;
-                    
-                    // Propagate match status up to parent folders
-                    PropagateMatchToParents(folder);
+                    file.MatchType = isMatch ? MatchType.Direct : MatchType.None;
                 }
+                else
+                {
+                    file.MatchType = !isMatch ? MatchType.Direct : MatchType.None;
+                }
+                
+                // If a file matches, the parent folder should also be considered a match path
+                if (file.MatchType == MatchType.Direct)
+                {
+                    // We'll set the folder as a direct match if it contains matching files
+                    folder.MatchType = MatchType.Direct;
+                }
+            }
+            
+            // Check if the folder name itself matches
+            bool folderNameMatches = false;
+            if (options.IsRegex)
+            {
+                try
+                {
+                    var regex = new Regex(options.Expression,
+                        options.IsCaseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase);
+                    folderNameMatches = regex.IsMatch(folder.Name);
+                }
+                catch
+                {
+                    // Invalid regex
+                    folderNameMatches = false;
+                }
+            }
+            else
+            {
+                folderNameMatches = options.IsCaseSensitive
+                    ? folder.Name.Contains(options.Expression)
+                    : folder.Name.Contains(options.Expression, StringComparison.OrdinalIgnoreCase);
+            }
+            
+            // Apply folder name match
+            if (options.Action == FilterAction.Include && folderNameMatches)
+            {
+                folder.MatchType = MatchType.Direct;
+            }
+            else if (options.Action == FilterAction.Exclude && !folderNameMatches)
+            {
+                folder.MatchType = MatchType.Direct;
             }
 
             // Recursively process subfolders
@@ -118,13 +199,10 @@ namespace ContextCreator.Services
             {
                 await ApplyFileNameFilterAsync(subFolder, options);
                 
-                // If a subfolder matches, this folder should also match
-                if (subFolder.IsMatch)
+                // If a subfolder is a direct match, update this folder's status if needed
+                if (subFolder.MatchType == MatchType.Direct && folder.MatchType != MatchType.Direct)
                 {
-                    folder.IsMatch = true;
-                    
-                    // Propagate match status up to parent folders
-                    PropagateMatchToParents(folder);
+                    folder.MatchType = MatchType.Ancestor;
                 }
             }
 
@@ -179,15 +257,19 @@ namespace ContextCreator.Services
                     }
 
                     // Apply the action (include/exclude)
-                    file.IsMatch = options.Action == FilterAction.Include ? isMatch : !isMatch;
-
-                    // If a file matches, the parent folder should also match
-                    if (file.IsMatch)
+                    if (options.Action == FilterAction.Include)
                     {
-                        folder.IsMatch = true;
-                        
-                        // Propagate match status up to parent folders
-                        PropagateMatchToParents(folder);
+                        file.MatchType = isMatch ? MatchType.Direct : MatchType.None;
+                    }
+                    else
+                    {
+                        file.MatchType = !isMatch ? MatchType.Direct : MatchType.None;
+                    }
+
+                    // If a file matches, the parent folder should also be marked
+                    if (file.MatchType == MatchType.Direct)
+                    {
+                        folder.MatchType = MatchType.Direct;
                     }
                 }
                 catch (Exception ex)
@@ -202,24 +284,11 @@ namespace ContextCreator.Services
             {
                 await ApplyContentFilterAsync(subFolder, options);
 
-                // If a subfolder matches, this folder should also match
-                if (subFolder.IsMatch)
+                // If a subfolder is a direct match, update this folder's status if needed
+                if (subFolder.MatchType == MatchType.Direct && folder.MatchType != MatchType.Direct)
                 {
-                    folder.IsMatch = true;
-                    
-                    // Propagate match status up to parent folders
-                    PropagateMatchToParents(folder);
+                    folder.MatchType = MatchType.Ancestor;
                 }
-            }
-        }
-        
-        private void PropagateMatchToParents(FolderItem folder)
-        {
-            var parent = folder.Parent;
-            while (parent != null)
-            {
-                parent.IsMatch = true;
-                parent = parent.Parent;
             }
         }
 

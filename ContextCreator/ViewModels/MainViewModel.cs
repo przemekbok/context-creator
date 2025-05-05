@@ -193,6 +193,16 @@ namespace ContextCreator.ViewModels
         /// Gets the command to deselect matching items
         /// </summary>
         public ICommand DeselectMatchingCommand { get; }
+        
+        /// <summary>
+        /// Gets the command to expand matching paths
+        /// </summary>
+        public ICommand ExpandMatchingCommand { get; }
+        
+        /// <summary>
+        /// Gets the command to collapse all folders
+        /// </summary>
+        public ICommand CollapseAllCommand { get; }
 
         /// <summary>
         /// Gets the command to estimate token count
@@ -235,6 +245,8 @@ namespace ContextCreator.ViewModels
             ClearFiltersCommand = new RelayCommand(_ => ExecuteClearFilters());
             SelectMatchingCommand = new RelayCommand(_ => ExecuteSelectMatching(), _ => HasActiveFilter);
             DeselectMatchingCommand = new RelayCommand(_ => ExecuteDeselectMatching(), _ => HasActiveFilter);
+            ExpandMatchingCommand = new RelayCommand(_ => ExecuteExpandMatching(), _ => HasActiveFilter);
+            CollapseAllCommand = new RelayCommand(_ => ExecuteCollapseAll());
             EstimateTokenCountCommand = new RelayCommand(_ => ExecuteEstimateTokenCount());
             SelectAllCommand = new RelayCommand(_ => ExecuteSelectAll());
             DeselectAllCommand = new RelayCommand(_ => ExecuteDeselectAll());
@@ -279,7 +291,16 @@ namespace ContextCreator.ViewModels
                     folderInfo.AppendLine("Subfolder List:");
                     foreach (var subfolder in folderItem.Folders)
                     {
-                        folderInfo.AppendLine($"- {subfolder.Name}");
+                        string matchStatus = "";
+                        if (HasActiveFilter)
+                        {
+                            if (subfolder.MatchType == MatchType.Direct)
+                                matchStatus = " [MATCH]";
+                            else if (subfolder.MatchType == MatchType.Ancestor)
+                                matchStatus = " [CONTAINS MATCHES]";
+                        }
+                        
+                        folderInfo.AppendLine($"- {subfolder.Name}{matchStatus}");
                     }
                 }
                 
@@ -293,7 +314,11 @@ namespace ContextCreator.ViewModels
                     folderInfo.AppendLine("File List:");
                     foreach (var file in folderItem.Files)
                     {
-                        folderInfo.AppendLine($"- {file.Name} ({FormatFileSize(file.Size)})");
+                        string matchStatus = "";
+                        if (HasActiveFilter && file.MatchType == MatchType.Direct)
+                            matchStatus = " [MATCH]";
+                            
+                        folderInfo.AppendLine($"- {file.Name} ({FormatFileSize(file.Size)}){matchStatus}");
                     }
                 }
                 
@@ -524,7 +549,7 @@ namespace ContextCreator.ViewModels
                 _currentFilterOptions = options;
                 await _filterService.ApplyFilterAsync(RootFolder, options);
                 HasActiveFilter = true;
-                StatusMessage = "Filter applied. Use the 'Tools' menu to select or deselect matching items.";
+                StatusMessage = "Filter applied. Use 'Tools > Filter Actions' to work with matching items.";
             }
             catch (Exception ex)
             {
@@ -592,13 +617,66 @@ namespace ContextCreator.ViewModels
                 StatusMessage = $"Error deselecting matching items: {ex.Message}";
             }
         }
+        
+        private void ExecuteExpandMatching()
+        {
+            if (RootFolder == null || !HasActiveFilter)
+            {
+                return;
+            }
+
+            try
+            {
+                StatusMessage = "Expanding to matching items...";
+                RootFolder.ExpandToMatches();
+                StatusMessage = "Expanded to show matching items";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error expanding to matches: {ex.Message}";
+            }
+        }
+        
+        private void ExecuteCollapseAll()
+        {
+            if (RootFolder == null)
+            {
+                return;
+            }
+
+            try
+            {
+                StatusMessage = "Collapsing all folders...";
+                CollapseAllFolders(RootFolder);
+                StatusMessage = "All folders collapsed";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error collapsing folders: {ex.Message}";
+            }
+        }
+        
+        private void CollapseAllFolders(FolderItem folder)
+        {
+            // First collapse all subfolders recursively
+            foreach (var subFolder in folder.Folders)
+            {
+                CollapseAllFolders(subFolder);
+            }
+            
+            // Then collapse this folder (except the root folder)
+            if (folder != RootFolder)
+            {
+                folder.IsExpanded = false;
+            }
+        }
 
         private void SelectMatchingItems(FolderItem folder, bool select)
         {
             // Set selection for matching files
             foreach (var file in folder.Files)
             {
-                if (file.IsMatch)
+                if (file.MatchType == MatchType.Direct)
                 {
                     file.IsSelected = select;
                 }
@@ -607,10 +685,9 @@ namespace ContextCreator.ViewModels
             // Recursively process subfolders
             foreach (var subFolder in folder.Folders)
             {
-                if (subFolder.IsMatch)
+                if (subFolder.MatchType == MatchType.Direct)
                 {
-                    // Only select/deselect the folder if it matches
-                    // Otherwise, just process its contents
+                    // Only select/deselect the folder if it matches directly
                     subFolder.IsSelected = select;
                 }
                 else
@@ -738,11 +815,11 @@ namespace ContextCreator.ViewModels
 
         private void ClearFilters(FolderItem folder)
         {
-            folder.IsMatch = false;
+            folder.MatchType = MatchType.None;
             
             foreach (var file in folder.Files)
             {
-                file.IsMatch = false;
+                file.MatchType = MatchType.None;
             }
             
             foreach (var subFolder in folder.Folders)

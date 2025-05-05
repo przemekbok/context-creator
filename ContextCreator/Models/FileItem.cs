@@ -12,6 +12,7 @@ namespace ContextCreator.Models
     {
         private bool _isSelected;
         private bool _isMatch;
+        private MatchType _matchType = MatchType.None;
 
         public string Name { get; }
         public string FullPath { get; }
@@ -40,7 +41,30 @@ namespace ContextCreator.Models
                 if (_isMatch != value)
                 {
                     _isMatch = value;
+                    if (value)
+                    {
+                        MatchType = MatchType.Direct;
+                    }
+                    else
+                    {
+                        MatchType = MatchType.None;
+                    }
                     OnPropertyChanged();
+                }
+            }
+        }
+
+        public MatchType MatchType
+        {
+            get => _matchType;
+            set
+            {
+                if (_matchType != value)
+                {
+                    _matchType = value;
+                    _isMatch = value != MatchType.None;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsMatch));
                 }
             }
         }
@@ -62,5 +86,26 @@ namespace ContextCreator.Models
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+    }
+
+    /// <summary>
+    /// Defines the type of match for highlighting purposes
+    /// </summary>
+    public enum MatchType
+    {
+        /// <summary>
+        /// Not a match
+        /// </summary>
+        None,
+
+        /// <summary>
+        /// Direct match (the file/folder itself matches the filter)
+        /// </summary>
+        Direct,
+
+        /// <summary>
+        /// Ancestor match (parent/grandparent folder leading to a match)
+        /// </summary>
+        Ancestor
     }
 }

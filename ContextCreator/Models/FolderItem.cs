@@ -17,6 +17,7 @@ namespace ContextCreator.Models
         private bool _isSelected;
         private bool _isLoaded;
         private bool _isMatch;
+        private MatchType _matchType = MatchType.None;
         private ObservableCollection<object> _items;
 
         public string Name { get; }
@@ -32,12 +33,14 @@ namespace ContextCreator.Models
         {
             get
             {
-                // Ensure content is loaded
-                EnsureContentLoaded();
-                
                 if (_items == null)
                 {
                     _items = new ObservableCollection<object>();
+                    // When Items is accessed and the folder is expanded, ensure content is loaded
+                    if (_isExpanded && !_isLoaded)
+                    {
+                        LoadContent();
+                    }
                     
                     // Add folders first, then files
                     foreach (var folder in Folders)
@@ -61,9 +64,9 @@ namespace ContextCreator.Models
                 if (_isExpanded != value)
                 {
                     _isExpanded = value;
-                    if (_isExpanded)
+                    if (_isExpanded && !_isLoaded)
                     {
-                        EnsureContentLoaded();
+                        LoadContent();
                     }
                     OnPropertyChanged();
                     // When expansion changes, refresh the items collection
@@ -113,7 +116,32 @@ namespace ContextCreator.Models
                 if (_isMatch != value)
                 {
                     _isMatch = value;
+                    if (value)
+                    {
+                        // If setting to match, set the match type to Direct by default
+                        // This can be overridden by explicitly setting MatchType
+                        MatchType = MatchType.Direct;
+                    }
+                    else
+                    {
+                        MatchType = MatchType.None;
+                    }
                     OnPropertyChanged();
+                }
+            }
+        }
+
+        public MatchType MatchType
+        {
+            get => _matchType;
+            set
+            {
+                if (_matchType != value)
+                {
+                    _matchType = value;
+                    _isMatch = value != MatchType.None;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsMatch));
                 }
             }
         }
@@ -188,6 +216,32 @@ namespace ContextCreator.Models
             {
                 // Handle exceptions (access denied, etc.)
                 System.Diagnostics.Debug.WriteLine($"Error loading folder {FullPath}: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Expands all folders in the path to a matching item
+        /// </summary>
+        public void ExpandToMatches()
+        {
+            // If this folder or any of its children match, expand it
+            bool shouldExpand = IsMatch || 
+                                Folders.Any(f => f.IsMatch) || 
+                                Files.Any(f => f.IsMatch);
+            
+            if (shouldExpand)
+            {
+                // Ensure content is loaded
+                EnsureContentLoaded();
+                
+                // Set expanded state
+                IsExpanded = true;
+                
+                // Recursively expand child folders
+                foreach (var folder in Folders)
+                {
+                    folder.ExpandToMatches();
+                }
             }
         }
 
