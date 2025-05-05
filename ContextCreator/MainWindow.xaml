@@ -15,13 +15,6 @@
         <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
         <converters:MatchTypeToHighlightConverter x:Key="MatchTypeToHighlightConverter"/>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-        
-        <!-- Style for TreeViewItem to handle proper scrolling -->
-        <Style x:Key="TreeViewItemStyle" TargetType="{x:Type TreeViewItem}">
-            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
-            <Setter Property="Focusable" Value="True"/>
-        </Style>
     </Window.Resources>
     
     <DockPanel>
@@ -139,13 +132,13 @@
                 </Grid>
 
                 <Border Grid.Row="1" BorderBrush="#CCCCCC" BorderThickness="1" Margin="5">
-                    <!-- Remove the ScrollViewer as the TreeView will handle scrolling internally -->
                     <TreeView x:Name="FolderTreeView" 
                               ItemsSource="{Binding RootFolderCollection}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
                               ScrollViewer.HorizontalScrollBarVisibility="Auto"
                               VirtualizingStackPanel.IsVirtualizing="True"
-                              VirtualizingStackPanel.VirtualizationMode="Recycling">
+                              VirtualizingStackPanel.VirtualizationMode="Recycling"
+                              SelectedItemChanged="FolderTreeView_SelectedItemChanged">
                         <TreeView.Resources>
                             <!-- Folder Template with combined ItemsSource for Folders and Files -->
                             <HierarchicalDataTemplate DataType="{x:Type models:FolderItem}" ItemsSource="{Binding Items}">
@@ -168,7 +161,13 @@
                             </DataTemplate>
                         </TreeView.Resources>
                         <TreeView.ItemContainerStyle>
-                            <Style TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource TreeViewItemStyle}"/>
+                            <Style TargetType="{x:Type TreeViewItem}">
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                                <Setter Property="Focusable" Value="True"/>
+                                <Setter Property="IsSelected" Value="False"/>
+                                <EventSetter Event="Selected" Handler="TreeViewItem_Selected"/>
+                                <EventSetter Event="MouseLeftButtonDown" Handler="TreeViewItem_MouseLeftButtonDown"/>
+                            </Style>
                         </TreeView.ItemContainerStyle>
                     </TreeView>
                 </Border>
