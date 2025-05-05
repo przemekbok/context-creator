@@ -26,6 +26,8 @@ namespace ContextCreator.ViewModels
         private int _estimatedTokenCount;
         private ContextConfiguration _currentConfiguration;
         private string _previewContent = "";
+        private FilterOptions? _currentFilterOptions;
+        private bool _hasActiveFilter = false;
 
         /// <summary>
         /// Gets the root folder
@@ -98,6 +100,15 @@ namespace ContextCreator.ViewModels
         {
             get => _estimatedTokenCount;
             set => SetProperty(ref _estimatedTokenCount, value);
+        }
+
+        /// <summary>
+        /// Gets if there is an active filter
+        /// </summary>
+        public bool HasActiveFilter
+        {
+            get => _hasActiveFilter;
+            private set => SetProperty(ref _hasActiveFilter, value);
         }
 
         /// <summary>
@@ -174,6 +185,16 @@ namespace ContextCreator.ViewModels
         public ICommand ClearFiltersCommand { get; }
 
         /// <summary>
+        /// Gets the command to select matching items
+        /// </summary>
+        public ICommand SelectMatchingCommand { get; }
+
+        /// <summary>
+        /// Gets the command to deselect matching items
+        /// </summary>
+        public ICommand DeselectMatchingCommand { get; }
+
+        /// <summary>
         /// Gets the command to estimate token count
         /// </summary>
         public ICommand EstimateTokenCountCommand { get; }
@@ -212,6 +233,8 @@ namespace ContextCreator.ViewModels
             ExportContextCommand = new RelayCommand(_ => ExecuteExportContext());
             ApplyFilterCommand = new RelayCommand<FilterOptions>(ExecuteApplyFilter);
             ClearFiltersCommand = new RelayCommand(_ => ExecuteClearFilters());
+            SelectMatchingCommand = new RelayCommand(_ => ExecuteSelectMatching(), _ => HasActiveFilter);
+            DeselectMatchingCommand = new RelayCommand(_ => ExecuteDeselectMatching(), _ => HasActiveFilter);
             EstimateTokenCountCommand = new RelayCommand(_ => ExecuteEstimateTokenCount());
             SelectAllCommand = new RelayCommand(_ => ExecuteSelectAll());
             DeselectAllCommand = new RelayCommand(_ => ExecuteDeselectAll());
@@ -306,6 +329,7 @@ namespace ContextCreator.ViewModels
                 StatusMessage = $"Opening folder: {folderPath}";
                 RootFolder = new FolderItem(folderPath);
                 RootFolder.IsExpanded = true; // Expand root folder by default
+                RootFolder.IsSelected = true; // Select all files by default
                 
                 CurrentConfiguration = new ContextConfiguration
                 {
@@ -321,6 +345,9 @@ namespace ContextCreator.ViewModels
                         RecentFolders.RemoveAt(RecentFolders.Count - 1);
                     }
                 }
+
+                // Update file count and token estimation
+                ExecuteEstimateTokenCount();
                 
                 StatusMessage = "Ready";
             }
@@ -494,8 +521,10 @@ namespace ContextCreator.ViewModels
             try
             {
                 StatusMessage = "Applying filter...";
+                _currentFilterOptions = options;
                 await _filterService.ApplyFilterAsync(RootFolder, options);
-                StatusMessage = "Filter applied";
+                HasActiveFilter = true;
+                StatusMessage = "Filter applied. Use the 'Tools' menu to select or deselect matching items.";
             }
             catch (Exception ex)
             {
@@ -514,11 +543,81 @@ namespace ContextCreator.ViewModels
             {
                 StatusMessage = "Clearing filters...";
                 ClearFilters(RootFolder);
+                _currentFilterOptions = null;
+                HasActiveFilter = false;
                 StatusMessage = "Filters cleared";
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Error clearing filters: {ex.Message}";
+            }
+        }
+
+        private void ExecuteSelectMatching()
+        {
+            if (RootFolder == null || !HasActiveFilter)
+            {
+                return;
+            }
+
+            try
+            {
+                StatusMessage = "Selecting matching items...";
+                SelectMatchingItems(RootFolder, true);
+                ExecuteEstimateTokenCount();
+                StatusMessage = "Matching items selected";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error selecting matching items: {ex.Message}";
+            }
+        }
+
+        private void ExecuteDeselectMatching()
+        {
+            if (RootFolder == null || !HasActiveFilter)
+            {
+                return;
+            }
+
+            try
+            {
+                StatusMessage = "Deselecting matching items...";
+                SelectMatchingItems(RootFolder, false);
+                ExecuteEstimateTokenCount();
+                StatusMessage = "Matching items deselected";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error deselecting matching items: {ex.Message}";
+            }
+        }
+
+        private void SelectMatchingItems(FolderItem folder, bool select)
+        {
+            // Set selection for matching files
+            foreach (var file in folder.Files)
+            {
+                if (file.IsMatch)
+                {
+                    file.IsSelected = select;
+                }
+            }
+            
+            // Recursively process subfolders
+            foreach (var subFolder in folder.Folders)
+            {
+                if (subFolder.IsMatch)
+                {
+                    // Only select/deselect the folder if it matches
+                    // Otherwise, just process its contents
+                    subFolder.IsSelected = select;
+                }
+                else
+                {
+                    // Process the subfolder's contents without selecting the folder itself
+                    SelectMatchingItems(subFolder, select);
+                }
             }
         }
 

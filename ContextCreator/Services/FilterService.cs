@@ -32,6 +32,9 @@ namespace ContextCreator.Services
             {
                 await ApplyContentFilterAsync(rootFolder, options);
             }
+            
+            // Ensure content is loaded for all folders for proper display
+            EnsureContentLoaded(rootFolder);
         }
 
         private void ResetMatches(FolderItem folder)
@@ -48,9 +51,24 @@ namespace ContextCreator.Services
                 ResetMatches(subFolder);
             }
         }
+        
+        private void EnsureContentLoaded(FolderItem folder)
+        {
+            // Load content for this folder
+            folder.EnsureContentLoaded();
+            
+            // Recursively ensure content is loaded for all subfolders
+            foreach (var subFolder in folder.Folders)
+            {
+                EnsureContentLoaded(subFolder);
+            }
+        }
 
         private async Task ApplyFileNameFilterAsync(FolderItem folder, FilterOptions options)
         {
+            // Always load the content to ensure we can filter properly
+            folder.EnsureContentLoaded();
+            
             if (options.ApplyToSelectedFoldersOnly && !folder.IsSelected)
             {
                 return;
@@ -63,9 +81,17 @@ namespace ContextCreator.Services
                 
                 if (options.IsRegex)
                 {
-                    var regex = new Regex(options.Expression, 
-                        options.IsCaseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase);
-                    isMatch = regex.IsMatch(file.Name);
+                    try
+                    {
+                        var regex = new Regex(options.Expression, 
+                            options.IsCaseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase);
+                        isMatch = regex.IsMatch(file.Name);
+                    }
+                    catch
+                    {
+                        // Invalid regex
+                        isMatch = false;
+                    }
                 }
                 else
                 {
@@ -81,6 +107,9 @@ namespace ContextCreator.Services
                 if (file.IsMatch)
                 {
                     folder.IsMatch = true;
+                    
+                    // Propagate match status up to parent folders
+                    PropagateMatchToParents(folder);
                 }
             }
 
@@ -93,6 +122,9 @@ namespace ContextCreator.Services
                 if (subFolder.IsMatch)
                 {
                     folder.IsMatch = true;
+                    
+                    // Propagate match status up to parent folders
+                    PropagateMatchToParents(folder);
                 }
             }
 
@@ -102,6 +134,9 @@ namespace ContextCreator.Services
 
         private async Task ApplyContentFilterAsync(FolderItem folder, FilterOptions options)
         {
+            // Always load the content to ensure we can filter properly
+            folder.EnsureContentLoaded();
+            
             if (options.ApplyToSelectedFoldersOnly && !folder.IsSelected)
             {
                 return;
@@ -124,9 +159,17 @@ namespace ContextCreator.Services
 
                     if (options.IsRegex)
                     {
-                        var regex = new Regex(options.Expression,
-                            options.IsCaseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase);
-                        isMatch = regex.IsMatch(content);
+                        try
+                        {
+                            var regex = new Regex(options.Expression,
+                                options.IsCaseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase);
+                            isMatch = regex.IsMatch(content);
+                        }
+                        catch
+                        {
+                            // Invalid regex
+                            isMatch = false;
+                        }
                     }
                     else
                     {
@@ -142,6 +185,9 @@ namespace ContextCreator.Services
                     if (file.IsMatch)
                     {
                         folder.IsMatch = true;
+                        
+                        // Propagate match status up to parent folders
+                        PropagateMatchToParents(folder);
                     }
                 }
                 catch (Exception ex)
@@ -160,7 +206,20 @@ namespace ContextCreator.Services
                 if (subFolder.IsMatch)
                 {
                     folder.IsMatch = true;
+                    
+                    // Propagate match status up to parent folders
+                    PropagateMatchToParents(folder);
                 }
+            }
+        }
+        
+        private void PropagateMatchToParents(FolderItem folder)
+        {
+            var parent = folder.Parent;
+            while (parent != null)
+            {
+                parent.IsMatch = true;
+                parent = parent.Parent;
             }
         }
 

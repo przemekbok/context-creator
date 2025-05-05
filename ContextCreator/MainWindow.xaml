@@ -60,6 +60,9 @@
                 <MenuItem Header="_Filename Filter..." Click="FilenameFilterMenuItem_Click" InputGestureText="Ctrl+Alt+F"/>
                 <MenuItem Header="_Clear Filters" Command="{Binding ClearFiltersCommand}" InputGestureText="Esc"/>
                 <Separator/>
+                <MenuItem Header="_Select Matching Files" Command="{Binding SelectMatchingCommand}" InputGestureText="Ctrl+M"/>
+                <MenuItem Header="_Deselect Matching Files" Command="{Binding DeselectMatchingCommand}" InputGestureText="Ctrl+Alt+M"/>
+                <Separator/>
                 <MenuItem Header="_Estimate Token Count" Command="{Binding EstimateTokenCountCommand}" InputGestureText="Ctrl+T"/>
                 <Separator/>
                 <MenuItem Header="_Settings..." Click="SettingsMenuItem_Click"/>
