@@ -119,6 +119,7 @@ namespace ContextCreator.Services
             }
 
             // Check files in this folder
+            bool hasMatchingFiles = false;
             foreach (var file in folder.Files)
             {
                 bool isMatch;
@@ -162,11 +163,10 @@ namespace ContextCreator.Services
                     file.MatchType = !isMatch ? MatchType.Direct : MatchType.None;
                 }
                 
-                // If a file matches, the parent folder should also be considered a match path
+                // Track if this folder contains any matching files
                 if (file.MatchType == MatchType.Direct)
                 {
-                    // We'll set the folder as a direct match if it contains matching files
-                    folder.MatchType = MatchType.Direct;
+                    hasMatchingFiles = true;
                 }
             }
             
@@ -201,7 +201,7 @@ namespace ContextCreator.Services
                     : folder.Name.Contains(options.Expression, StringComparison.OrdinalIgnoreCase);
             }
             
-            // Apply folder name match
+            // Apply folder name match - only mark the folder as a direct match if its name matches
             if (options.Action == FilterAction.Include && folderNameMatches)
             {
                 folder.MatchType = MatchType.Direct;
@@ -210,14 +210,20 @@ namespace ContextCreator.Services
             {
                 folder.MatchType = MatchType.Direct;
             }
+            // If the folder has matching files but its name doesn't match, mark it as an ancestor
+            else if (hasMatchingFiles && folder.MatchType != MatchType.Direct)
+            {
+                folder.MatchType = MatchType.Ancestor;
+            }
 
             // Recursively process subfolders
             foreach (var subFolder in folder.Folders)
             {
                 await ApplyFileNameFilterAsync(subFolder, options);
                 
-                // If a subfolder is a direct match, update this folder's status if needed
-                if (subFolder.MatchType == MatchType.Direct && folder.MatchType != MatchType.Direct)
+                // If a subfolder is a direct match or contains matches, update this folder's status if needed
+                if ((subFolder.MatchType == MatchType.Direct || subFolder.MatchType == MatchType.Ancestor) && 
+                    folder.MatchType == MatchType.None)
                 {
                     folder.MatchType = MatchType.Ancestor;
                 }
@@ -238,6 +244,7 @@ namespace ContextCreator.Services
             }
 
             // Check files in this folder
+            bool hasMatchingFiles = false;
             foreach (var file in folder.Files)
             {
                 try
@@ -283,10 +290,10 @@ namespace ContextCreator.Services
                         file.MatchType = !isMatch ? MatchType.Direct : MatchType.None;
                     }
 
-                    // If a file matches, the parent folder should also be marked
+                    // Track if this folder contains any matching files
                     if (file.MatchType == MatchType.Direct)
                     {
-                        folder.MatchType = MatchType.Direct;
+                        hasMatchingFiles = true;
                     }
                 }
                 catch (Exception ex)
@@ -296,13 +303,20 @@ namespace ContextCreator.Services
                 }
             }
 
+            // If the folder has matching files, mark it as an ancestor (unless it's already a direct match)
+            if (hasMatchingFiles && folder.MatchType != MatchType.Direct)
+            {
+                folder.MatchType = MatchType.Ancestor;
+            }
+
             // Recursively process subfolders
             foreach (var subFolder in folder.Folders)
             {
                 await ApplyContentFilterAsync(subFolder, options);
 
-                // If a subfolder is a direct match, update this folder's status if needed
-                if (subFolder.MatchType == MatchType.Direct && folder.MatchType != MatchType.Direct)
+                // If a subfolder is a direct match or contains matches, update this folder's status if needed
+                if ((subFolder.MatchType == MatchType.Direct || subFolder.MatchType == MatchType.Ancestor) && 
+                    folder.MatchType == MatchType.None)
                 {
                     folder.MatchType = MatchType.Ancestor;
                 }
