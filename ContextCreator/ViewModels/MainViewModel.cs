@@ -700,6 +700,21 @@ namespace ContextCreator.ViewModels
             }
         }
 
+        /// <summary>
+        /// Ensures all folders and subfolders are loaded
+        /// </summary>
+        private void EnsureAllFoldersLoaded(FolderItem folder)
+        {
+            // Ensure content is loaded for this folder
+            folder.EnsureContentLoaded();
+            
+            // Recursively load all subfolders
+            foreach (var subFolder in folder.Folders)
+            {
+                EnsureAllFoldersLoaded(subFolder);
+            }
+        }
+
         private void LoadConfiguration(string filePath)
         {
             try
@@ -714,14 +729,24 @@ namespace ContextCreator.ViewModels
                 {
                     OpenFolder(CurrentConfiguration.RootFolder, false); // Don't create new configuration
                     
-                    // Apply selection
-                    if (RootFolder != null && CurrentConfiguration.SelectedPaths.Any())
+                    // Ensure all folders are loaded before applying selection
+                    if (RootFolder != null)
                     {
-                        ApplySelection(RootFolder, CurrentConfiguration.SelectedPaths);
+                        // Show loading message
+                        StatusMessage = "Loading folder structure...";
+                        
+                        // Ensure all folders are loaded
+                        EnsureAllFoldersLoaded(RootFolder);
+                        
+                        // Apply selection
+                        if (CurrentConfiguration.SelectedPaths.Any())
+                        {
+                            ApplySelection(RootFolder, CurrentConfiguration.SelectedPaths);
+                        }
+                        
+                        // Update token estimation after applying selection
+                        ExecuteEstimateTokenCount();
                     }
-                    
-                    // Update token estimation after applying selection
-                    ExecuteEstimateTokenCount();
                 }
                 else
                 {
@@ -765,7 +790,10 @@ namespace ContextCreator.ViewModels
             // Set selection for files
             foreach (var file in folder.Files)
             {
-                file.IsSelected = selectedPaths.Contains(file.FullPath);
+                // Use a more robust path comparison
+                file.IsSelected = selectedPaths.Any(p => 
+                    Path.GetFullPath(p).Equals(Path.GetFullPath(file.FullPath), 
+                    StringComparison.OrdinalIgnoreCase));
             }
             
             // Recursively process subfolders
