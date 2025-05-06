@@ -47,11 +47,12 @@ namespace ContextCreator
             AddKeyBinding(Key.I, ModifierKeys.Control, _viewModel.InvertSelectionCommand);
             AddKeyBinding(Key.T, ModifierKeys.Control, _viewModel.EstimateTokenCountCommand);
             AddKeyBinding(Key.Escape, ModifierKeys.None, _viewModel.ClearFiltersCommand);
+            AddKeyBinding(Key.F, ModifierKeys.Control, _viewModel.ConsolidateFilesCommand);
             
             // Filter commands
             var contentFilterCommand = new RoutedCommand();
             CommandBindings.Add(new CommandBinding(contentFilterCommand, (s, e) => ContentFilterMenuItem_Click(this, new RoutedEventArgs())));
-            AddKeyBinding(Key.F, ModifierKeys.Control, contentFilterCommand);
+            AddKeyBinding(Key.F, ModifierKeys.Control | ModifierKeys.Shift, contentFilterCommand);
             
             var filenameFilterCommand = new RoutedCommand();
             CommandBindings.Add(new CommandBinding(filenameFilterCommand, (s, e) => FilenameFilterMenuItem_Click(this, new RoutedEventArgs())));

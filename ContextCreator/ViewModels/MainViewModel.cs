@@ -256,6 +256,11 @@ namespace ContextCreator.ViewModels
         public ICommand CreateFolderWithSetupCommand { get; }
 
         /// <summary>
+        /// Gets the command to consolidate selected files to a single folder
+        /// </summary>
+        public ICommand ConsolidateFilesCommand { get; }
+
+        /// <summary>
         /// Initializes a new instance of the MainViewModel class
         /// </summary>
         public MainViewModel()
@@ -284,9 +289,115 @@ namespace ContextCreator.ViewModels
             InvertSelectionCommand = new RelayCommand(_ => ExecuteInvertSelection());
             ShowMatchingPathsCommand = new RelayCommand(_ => ExecuteShowMatchingPaths(), _ => HasActiveFilter);
             CreateFolderWithSetupCommand = new RelayCommand(_ => ExecuteCreateFolderWithSetup(), _ => RootFolder != null);
+            ConsolidateFilesCommand = new RelayCommand(_ => ExecuteConsolidateFiles(), _ => RootFolder != null);
 
             // Load recent folders and configurations
             LoadRecentItems();
+        }
+
+        /// <summary>
+        /// Consolidates selected files into a single folder without preserving directory structure
+        /// </summary>
+        private void ExecuteConsolidateFiles()
+        {
+            if (RootFolder == null)
+            {
+                _dialogService.ShowMessageBox("No folder loaded", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                return;
+            }
+
+            // Ask for a destination folder
+            var destFolderPath = _dialogService.ShowFolderBrowserDialog("Select a destination folder");
+            if (string.IsNullOrEmpty(destFolderPath))
+            {
+                return;
+            }
+
+            try
+            {
+                StatusMessage = "Consolidating files to single folder...";
+
+                // Create a name for the target folder
+                string targetFolderName = "ConsolidatedFiles";
+
+                // Create the target folder
+                string newFolderPath = Path.Combine(destFolderPath, targetFolderName);
+
+                // If the folder already exists, add a suffix
+                int suffix = 1;
+                string originalPath = newFolderPath;
+                while (Directory.Exists(newFolderPath))
+                {
+                    newFolderPath = $"{originalPath}_{suffix}";
+                    suffix++;
+                }
+
+                // Create the directory
+                Directory.CreateDirectory(newFolderPath);
+
+                // Collect selected files
+                var selectedFiles = new List<string>();
+                CollectSelectedPaths(RootFolder, selectedFiles);
+
+                if (!selectedFiles.Any())
+                {
+                    StatusMessage = "No files selected";
+                    return;
+                }
+
+                int copiedFiles = 0;
+                long totalSize = 0;
+                var fileNameConflicts = new Dictionary<string, int>();
+
+                foreach (var filePath in selectedFiles)
+                {
+                    // Get just the filename without path
+                    string fileName = Path.GetFileName(filePath);
+                    
+                    // Handle filename conflicts by adding a suffix
+                    if (fileNameConflicts.ContainsKey(fileName))
+                    {
+                        fileNameConflicts[fileName]++;
+                        string fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+                        string fileExt = Path.GetExtension(fileName);
+                        fileName = $"{fileNameWithoutExt}_{fileNameConflicts[fileName]}{fileExt}";
+                    }
+                    else
+                    {
+                        fileNameConflicts[fileName] = 0;
+                    }
+                    
+                    // Determine the target path (all files in the root of the target folder)
+                    string targetPath = Path.Combine(newFolderPath, fileName);
+                    
+                    // Copy the file
+                    File.Copy(filePath, targetPath);
+                    
+                    // Update statistics
+                    copiedFiles++;
+                    totalSize += new FileInfo(filePath).Length;
+                }
+
+                // Show success message
+                StatusMessage = $"Consolidated {copiedFiles} files ({FormatFileSize(totalSize)}) into a single folder";
+
+                // Ask if the user wants to open the new folder
+                var result = _dialogService.ShowMessageBox(
+                    $"Successfully consolidated {copiedFiles} files into a single folder.\n\nDo you want to open the new folder?",
+                    "Files Consolidated",
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Information);
+
+                if (result == System.Windows.MessageBoxResult.Yes)
+                {
+                    OpenFolder(newFolderPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error consolidating files: {ex.Message}";
+                _dialogService.ShowMessageBox($"Error consolidating files: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
         }
 
         /// <summary>
