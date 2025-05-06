@@ -37,6 +37,7 @@
                 <MenuItem Header="_Export Context..." Command="{Binding ExportContextCommand}" InputGestureText="Ctrl+E"/>
                 <Separator/>
                 <MenuItem Header="Create _Folder with Current Setup..." Command="{Binding CreateFolderWithSetupCommand}" InputGestureText="Ctrl+N"/>
+                <MenuItem Header="Consolidate _Files to Single Folder..." Command="{Binding ConsolidateFilesCommand}" InputGestureText="Ctrl+F"/>
                 <Separator/>
                 <MenuItem Header="E_xit" Click="ExitMenuItem_Click" InputGestureText="Alt+F4"/>
             </MenuItem>
@@ -60,7 +61,7 @@
                 </MenuItem>
             </MenuItem>
             <MenuItem Header="_Tools">
-                <MenuItem Header="_Content Filter..." Click="ContentFilterMenuItem_Click" InputGestureText="Ctrl+F"/>
+                <MenuItem Header="_Content Filter..." Click="ContentFilterMenuItem_Click" InputGestureText="Ctrl+Shift+F"/>
                 <MenuItem Header="_Filename Filter..." Click="FilenameFilterMenuItem_Click" InputGestureText="Ctrl+Alt+F"/>
                 <MenuItem Header="_Clear Filters" Command="{Binding ClearFiltersCommand}" InputGestureText="Esc"/>
                 <Separator/>
